@@ -3,6 +3,8 @@ import type { NextPageWithLayout } from '@/types';
 // import { Fira_Code } from '@next/font/google';
 import Head from 'next/head';
 import { ThemeProvider } from 'next-themes';
+import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
 import ModalsContainer from '@/components/modal-views/container';
 import DrawersContainer from '@/components/drawer-views/container';
 import SettingsButton from '@/components/settings/settings-button';
@@ -16,23 +18,51 @@ import '@/assets/css/globals.css';
 import '@/assets/css/range-slider.css';
 
 type AppPropsWithLayout = AppProps & {
-  Component: NextPageWithLayout; 
+  Component: NextPageWithLayout;
 };
 
-// const firaCode = Fira_Code({
-//   weight: ['400', '500', '700'],
-//   style: ['normal'],
-//   subsets: ['latin'],
-//   variable: '--font-body',
-// });
+function AppLoader() {
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/85 backdrop-blur-sm dark:bg-dark/85">
+      <div className="flex flex-col items-center gap-4">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-brand dark:border-gray-700 dark:border-t-brand" />
+        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+          Loading...
+        </span>
+      </div>
+    </div>
+  );
+}
 
 function CustomApp({ Component, pageProps }: AppPropsWithLayout) {
-  //could remove this if you don't need to page level layout
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const handleStart = (url: string) => {
+      if (url !== router.asPath) {
+        setIsLoading(true);
+      }
+    };
+
+    const handleComplete = () => setIsLoading(false);
+
+    router.events.on('routeChangeStart', handleStart);
+    router.events.on('routeChangeComplete', handleComplete);
+    router.events.on('routeChangeError', handleComplete);
+
+    return () => {
+      router.events.off('routeChangeStart', handleStart);
+      router.events.off('routeChangeComplete', handleComplete);
+      router.events.off('routeChangeError', handleComplete);
+    };
+  }, [router]);
+
   const getLayout = Component.getLayout ?? ((page) => page);
+
   return (
     <>
       <Head>
-        {/* maximum-scale 1 meta tag need to prevent ios input focus auto zooming */}
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1 maximum-scale=1"
@@ -45,13 +75,12 @@ function CustomApp({ Component, pageProps }: AppPropsWithLayout) {
         defaultTheme="light"
       >
         <WalletProvider>
-          {/* <div className={`${firaCode.variable} font-body`}> */}
+          {isLoading && <AppLoader />}
           {getLayout(<Component {...pageProps} />)}
           <SettingsButton />
           <SettingsDrawer />
           <ModalsContainer />
           <DrawersContainer />
-          {/* </div> */}
         </WalletProvider>
       </ThemeProvider>
     </>
